@@ -1,0 +1,83 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome</h1>
+    <p>Learn about <a href="https://docs.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+
+    <form id="form-token">
+        <input type="text" name="token" />
+        <button type="submit">Valider</button>
+    </form>
+
+    <form id="form-message" class="d-none">
+        <input type="text" name="msg" />
+        <button type="submit">Envoyer</button>
+    </form>
+    <div id="list-message" class="d-none"></div>
+</div>
+
+
+@section Scripts {
+    <script src="~/lib/microsoft-signalr/signalr.js"></script>
+    <script>
+        const formToken = document.getElementById('form-token');
+        const formMessage = document.getElementById('form-message');
+        const listMessage = document.getElementById('list-message');
+
+        formToken.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // In real case -> Login + AJAX
+            const token = formToken['token'].value;
+
+            // Open SignalR connection with Token
+            const connection = new signalR.HubConnectionBuilder()
+                .withUrl("http://localhost:5219/MessageHub", { accessTokenFactory: () => token })
+                .build()
+
+            // Disable form for token
+            for (const elem of formToken.children) {
+                elem.setAttribute('disabled', 'disabled');
+            }
+
+            // Using SignalR
+            try {
+                await connection.start();
+
+                // Display message zone
+                formMessage.classList.remove('d-none');
+                listMessage.classList.remove('d-none');
+            }
+            catch (error) {
+                console.log(error);
+            }
+
+            // Message Box
+            formMessage.addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const message = formMessage['msg'].value;
+
+                try {
+                    await connection.invoke('sendMessage', message);
+                }
+                catch (error) {
+                    console.log(error);
+                }
+            });
+
+            // Message List
+            connection.on('receiveMessage', (username, message) => {
+                const message_html = document.createElement('p');
+                message_html.innerText = `${username} : ${message}`;
+
+                listMessage.append(message_html);
+            });
+        });
+
+    </script>
+}
